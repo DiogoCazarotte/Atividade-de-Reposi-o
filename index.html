@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IoT Sentinel Pro — Dashboard Industrial</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+
+<div class="app">
+
+  <!-- ── SIDEBAR DE PROVISIONAMENTO ── -->
+  <aside class="sidebar">
+
+    <div class="sidebar-header">
+      <span class="logo-dot"></span>
+      <div>
+        <div class="logo-name">IoT Sentinel Pro</div>
+        <div class="logo-version">Dashboard Industrial v1.0</div>
+      </div>
+    </div>
+
+    <!-- Formulário de cadastro -->
+    <div class="form-section">
+      <div class="form-section-title">Cadastrar Sensor</div>
+
+      <div class="field">
+        <label for="inputNome">Nome do Sensor</label>
+        <input
+          type="text"
+          id="inputNome"
+          placeholder="Ex: Termopar K Forno 01"
+          onkeyup="validarCampo(this)"
+          onblur="validarBlur(this)"
+        />
+        <span class="hint" id="hintNome"></span>
+      </div>
+
+      <div class="field">
+        <label for="inputTipo">Tipo</label>
+        <select id="inputTipo" onchange="atualizarUnidade()">
+          <option value="">Selecione...</option>
+          <option value="TEMPERATURA">🌡 Temperatura</option>
+          <option value="PRESSAO">⚙ Pressão</option>
+          <option value="UMIDADE">💧 Umidade</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="inputValor">Valor <span id="unidadeLabel" class="unit-tag"></span></label>
+        <input
+          type="number"
+          id="inputValor"
+          placeholder="0"
+          step="0.1"
+          onkeyup="validarCampo(this)"
+          onblur="validarBlur(this)"
+          onkeydown="teclaEnter(event)"
+        />
+        <span class="hint" id="hintValor"></span>
+      </div>
+
+      <button class="btn-add" onclick="adicionarSensor()">+ Adicionar Sensor</button>
+      <button class="btn-clear" onclick="limparFormulario()">Limpar</button>
+    </div>
+
+    <!-- Sensores de teste -->
+    <div class="form-section">
+      <div class="form-section-title">Sensores de Teste</div>
+      <button class="btn-test" onclick="addTeste('Termopar Tipo K Forno 01','TEMPERATURA',450)">
+        🌡 Termopar K — 450°C
+      </button>
+      <button class="btn-test" onclick="addTeste('Transmissor de Pressão Diferencial Tubulação A2','PRESSAO',120)">
+        ⚙ Transmissor P — 120 Bar
+      </button>
+      <button class="btn-test" onclick="addTeste('Higrômetro Digital Almoxarifado Químico','UMIDADE',25)">
+        💧 Higrômetro — 25%
+      </button>
+    </div>
+
+    <!-- Resumo -->
+    <div class="sidebar-footer">
+      <div class="footer-stat">
+        <span class="fs-val" id="footerTotal">0</span>
+        <span class="fs-lbl">sensores</span>
+      </div>
+      <div class="footer-stat">
+        <span class="fs-val red" id="footerCrit">0</span>
+        <span class="fs-lbl">críticos</span>
+      </div>
+      <button class="btn-limpar-all" onclick="limparTodos()" title="Remover todos">🗑</button>
+    </div>
+
+  </aside>
+
+  <!-- ── PAINEL PRINCIPAL ── -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-title">
+        <span class="topbar-dot" id="statusDot"></span>
+        Planta Industrial — Monitoramento em Tempo Real
+      </div>
+      <div class="topbar-right">
+        <div class="live-badge">
+          <span class="live-dot"></span> AO VIVO
+        </div>
+        <span class="topbar-time" id="timeDisplay"></span>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon">🌡</div>
+        <div>
+          <div class="kpi-val" id="kpiTemp">—</div>
+          <div class="kpi-lbl">Média Temperatura</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">⚙</div>
+        <div>
+          <div class="kpi-val" id="kpiPress">—</div>
+          <div class="kpi-lbl">Média Pressão</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">💧</div>
+        <div>
+          <div class="kpi-val" id="kpiUmid">—</div>
+          <div class="kpi-lbl">Média Umidade</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-alert" id="kpiAlertCard">
+        <div class="kpi-icon">⚠</div>
+        <div>
+          <div class="kpi-val red" id="kpiCrit">0</div>
+          <div class="kpi-lbl">Alertas Críticos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros + Grid de cards -->
+    <div class="panel-section">
+      <div class="panel-header">
+        <h2 class="panel-title">Sensores em Campo</h2>
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filtrarCards('TODOS')">Todos</button>
+          <button class="filter-btn" onclick="filtrarCards('TEMPERATURA')">Temperatura</button>
+          <button class="filter-btn" onclick="filtrarCards('PRESSAO')">Pressão</button>
+          <button class="filter-btn" onclick="filtrarCards('UMIDADE')">Umidade</button>
+        </div>
+      </div>
+
+      <div class="cards-grid" id="sensoresGrid">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📡</div>
+          <p>Nenhum sensor cadastrado.</p>
+          <p class="empty-sub">Use o painel lateral para adicionar sensores.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="panel-section chart-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Médias por Categoria</h2>
+        <span class="chart-badge">Chart.js — Barras</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="graficoBarras"></canvas>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
